@@ -376,9 +376,10 @@ function buildTile(i) {
   new ResizeObserver(() => sizePlayers(t)).observe(el);
 }
 
-// Renderbreedte per scherm in pixels: het grote scherm 1080p, de kleine 480p. Vijf streams tegelijk zijn zo goed te doen.
+// Renderbreedte per scherm in pixels: het grote scherm 1440p, de kleine 720p (telefoon: 720p en 360p).
+// YouTube kiest de kwaliteit zelf op basis van dit formaat en de bandbreedte, en zakt terug als de verbinding het niet haalt.
 function sizePlayers(t) {
-  const rw = t.i === 0 ? (narrow.matches ? 1280 : 1920) : (narrow.matches ? 640 : 854);
+  const rw = t.i === 0 ? (narrow.matches ? 1280 : 2560) : (narrow.matches ? 640 : 1280);
   const rh = rw * 9 / 16;
   const box = t.el.getBoundingClientRect();
   if (!box.width) return;
