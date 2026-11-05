@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hoe mooi Nederland is</title>
+<meta name="description" content="Nederland live: 22 YouTube-webcams die willekeurig wisselen, van de Dam tot de Waddeneilanden.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Literata:opsz,wght@7..72,400;7..72,500&display=swap">
+<style>
+/* Layout: de videomuur is een De Stijl-compositie. Zwarte lijnen, vlakken in rood, blauw en geel, en daartussen het land zelf. De vlakken zijn de bediening. */
+:root {
+  color-scheme: light;
+  --ink: #101218;      /* de zwarte lijnen */
+  --paper: #f5f6f3;    /* wit met een koele zweem */
+  --red: #d6251b;      /* wisselen */
+  --blue: #123f96;     /* pauzeren */
+  --yellow: #f6c700;   /* tijd */
+  --muted: #565b66;    /* secundaire tekst */
+  --rule: #c9ccc8;     /* dunne lijnen in de tekst */
+  --display: "Bricolage Grotesque", "Arial Narrow", Arial, sans-serif;
+  --body: "Literata", Georgia, "Times New Roman", serif;
+  --line: 7px;
+  --fade: 1.1s;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--paper); }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 18px/1.6 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 0;
+}
+.page { max-width: 1760px; margin: 0 auto; }
+a { color: var(--blue); }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+/* De muur */
+.wall {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+  gap: var(--line);
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  background: var(--ink);
+  border: var(--line) solid var(--ink);
+}
+.wall > * { min-width: 0; min-height: 0; }
+.p-title  { grid-area: 1 / 1 / 4 / 5; }
+.v0       { grid-area: 1 / 5 / 6 / 13; }
+.v1       { grid-area: 4 / 1 / 7 / 5; }
+.p-swap   { grid-area: 6 / 5 / 7 / 7; }
+.v3       { grid-area: 6 / 7 / 9 / 10; }
+.v4       { grid-area: 6 / 10 / 9 / 12; }
+.p-pause  { grid-area: 6 / 12 / 8 / 13; }
+.p-clock  { grid-area: 7 / 1 / 9 / 3; }
+.v2       { grid-area: 7 / 3 / 9 / 7; }
+.p-next   { grid-area: 8 / 12 / 9 / 13; }
+
+.p-title {
+  background: var(--paper);
+  display: flex; align-items: flex-end;
+  padding: 1.4cqw;
+}
+h1 {
+  margin: 0;
+  font: 800 5.5cqw/.93 var(--display);
+  font-variation-settings: "opsz" 96;
+  letter-spacing: -.025em;
+}
+.panel {
+  border: 0; margin: 0; padding: .9cqw;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start;
+  text-align: left;
+  font: 800 clamp(14px, 1.75cqw, 30px)/1.02 var(--display);
+  letter-spacing: -.01em;
+}
+button.panel { cursor: pointer; transition: filter .15s; }
+button.panel:hover { filter: brightness(1.14); }
+button.panel:focus-visible { outline: 4px solid var(--paper); outline-offset: -8px; }
+.p-swap { background: var(--red); color: #fff; }
+.p-pause { background: var(--blue); color: #fff; font-size: clamp(13px, 1.3cqw, 22px); }
+.p-clock { background: var(--yellow); color: var(--ink); font-variant-numeric: tabular-nums; }
+.p-clock small, .p-next small {
+  display: block;
+  font: 500 clamp(11px, .95cqw, 16px)/1.2 var(--display);
+  letter-spacing: 0;
+  margin-bottom: .25em;
+}
+.p-next { background: var(--paper); color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* Schermen */
+.tile {
+  position: relative;
+  overflow: hidden;
+  background: #1b1e26;
+  cursor: pointer;
+}
+.tile.v0 { cursor: default; }
+.layer { position: absolute; inset: 0; opacity: 0; transition: opacity var(--fade) ease; }
+.layer.on { opacity: 1; }
+/* De speler rendert groot en wordt passend geschaald: YouTube kiest zijn kwaliteit op basis van de spelergrootte. */
+.layer iframe {
+  position: absolute; left: 50%; top: 50%;
+  width: var(--rw, 100%); height: var(--rh, 100%);
+  max-width: none;
+  transform: translate(-50%, -50%) scale(var(--s, 1));
+  border: 0; pointer-events: none;
+}
+.waiting {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  padding: 8px; text-align: center;
+  font: 500 13px var(--display);
+  color: #c7cad2;
+}
+.tag {
+  position: absolute; left: 0; bottom: 0; max-width: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 5px 10px 6px;
+  border-top: 3px solid var(--ink);
+  border-right: 3px solid var(--ink);
+}
+.tag .where { display: block; font: 500 11.5px/1.25 var(--display); color: var(--muted); }
+.tag .name { display: block; font: 800 15px/1.15 var(--display); letter-spacing: -.01em; }
+.tag a { font: 500 11.5px/1.25 var(--display); color: var(--blue); }
+.tile:not(.v0) .tag a { display: none; }
+.v0 .tag { padding: 8px 14px 9px; }
+.v0 .tag .name { font-size: clamp(18px, 2.1cqw, 34px); }
+.v0 .tag .where { font-size: 13px; }
+.live {
+  position: absolute; top: 0; right: 0;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px;
+  background: var(--red); color: #fff;
+  font: 800 11px var(--display);
+  letter-spacing: .08em;
+}
+.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: pulse 1.6s infinite; }
+@keyframes pulse { 50% { opacity: .25; } }
+
+/* Tekst */
+.intro {
+  display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px 64px;
+  padding-block: 56px 48px;
+  align-items: end;
+}
+.intro p { margin: 0; max-width: 62ch; }
+.lead { font: 500 clamp(23px, 2.5vw, 36px)/1.25 var(--display); letter-spacing: -.01em; text-wrap: pretty; }
+.intro .side { color: var(--muted); }
+h2 {
+  margin: 0;
+  font: 800 clamp(32px, 4.6vw, 68px)/1 var(--display);
+  font-variation-settings: "opsz" 96;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+}
+.sub { margin: 12px 0 0; color: var(--muted); max-width: 62ch; }
+section.block { padding-block: 0 64px; }
+
+/* Camera's */
+.groups {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px 28px;
+  margin-top: 28px;
+}
+.group { min-width: 0; }
+.group h3 {
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: var(--line) solid var(--ink);
+  font: 800 21px/1.1 var(--display);
+}
+.group ul { list-style: none; margin: 0; padding: 0; }
+.group li { border-bottom: 1px solid var(--rule); }
+.group li button {
+  all: unset; box-sizing: border-box;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px;
+  align-items: baseline;
+  width: 100%;
+  padding: 9px 2px;
+  cursor: pointer;
+}
+.group li button:hover .cname { color: var(--blue); }
+.group li button:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
+.cname { font: 800 16px/1.2 var(--display); }
+.cstate { font: 500 11.5px var(--display); color: var(--muted); }
+.cstate.in { color: #fff; background: var(--red); padding: 0 5px; }
+.cstate.off { text-decoration: line-through; }
+.cnote { grid-column: 1 / -1; font-size: 14.5px; line-height: 1.4; color: var(--muted); }
+
+/* Waarom */
+.why { margin: 28px 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 36px 40px; }
+.why > div { min-width: 0; border-top: var(--line) solid var(--ink); padding-top: 12px; }
+.why > div.r { border-color: var(--red); }
+.why > div.b { border-color: var(--blue); }
+.why > div.y { border-color: var(--yellow); }
+.why dt { font: 800 clamp(21px, 2vw, 28px)/1.12 var(--display); letter-spacing: -.01em; }
+.why dd { margin: 8px 0 0; max-width: 58ch; }
+
+/* Zonder camera */
+.nocam { list-style: none; margin: 24px 0 0; padding: 0; columns: 2; column-gap: 56px; }
+.nocam li { break-inside: avoid; padding: 11px 0; border-bottom: 1px solid var(--rule); }
+.nocam b { font: 800 17px/1.2 var(--display); display: block; }
+.nocam span { color: var(--muted); font-size: 15.5px; line-height: 1.45; display: block; }
+
+footer {
+  padding-block: 20px 40px;
+  border-top: var(--line) solid var(--ink);
+  font-size: 14.5px;
+  color: var(--muted);
+}
+footer p { margin: 0 0 8px; max-width: 80ch; }
+
+@media (max-width: 1100px) {
+  .groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .why { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile:not(.v0) .tag { padding: 3px 7px 4px; }
+  .tile:not(.v0) .tag .where { display: none; }
+  .tile:not(.v0) .tag .name { font-size: 13px; }
+}
+@media (max-width: 760px) {
+  body { font-size: 17px; }
+  .wall {
+    aspect-ratio: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+    grid-auto-rows: auto;
+  }
+  .p-title, .v0 { grid-area: auto / 1 / auto / 3; }
+  .v1, .v2, .p-swap, .p-pause, .p-clock, .p-next { grid-area: auto; }
+  .v3, .v4 { display: none; }
+  .p-title { order: 0; }
+  .v0 { order: 1; }
+  .v1, .v2 { order: 2; }
+  .panel { order: 3; }
+  .p-title { padding: 14px 12px 12px; }
+  h1 { font-size: 15cqw; }
+  .tile { aspect-ratio: 16 / 9; }
+  .panel { min-height: 76px; padding: 10px 12px; font-size: 18px; }
+  .p-pause { font-size: 18px; }
+  .intro { grid-template-columns: minmax(0, 1fr); padding-block: 36px 36px; }
+  .groups, .why { grid-template-columns: minmax(0, 1fr); }
+  .nocam { columns: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --fade: 0s; }
+  .live::before { animation: none; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <main>
+    <section class="wall" id="wall" aria-label="Live webcams">
+      <header class="p-title"><h1>Hoe mooi Nederland is</h1></header>
+      <button class="panel p-swap" id="next" type="button">Wissel nu</button>
+      <button class="panel p-pause" id="pause" type="button" aria-pressed="false">Pauze</button>
+      <div class="panel p-clock"><small id="date">Nederlandse tijd</small><span id="clock">--:--:--</span></div>
+      <div class="panel p-next"><small id="nextlabel">Wissel over</small><span id="status" aria-live="off">--</span></div>
+    </section>
+
+    <section class="intro">
+      <p class="lead">Een plat land met een enorme lucht. Hier zie je de Noordzee het strand oprollen bij Scheveningen, schepen de Nieuwe Waterweg opvaren en het licht veranderen boven de Zaanse Schans.</p>
+      <p class="side">Dit zijn de beelden van nu. Is het donker of mistig, dan zie je dat hier ook. Elke paar tellen springt een van de schermen willekeurig naar een andere plek.</p>
+    </section>
+
+    <section class="block">
+      <h2>22 plekken, live</h2>
+      <p class="sub">Kies zelf een plek en die komt op het grote scherm. Je kunt ook op een klein scherm klikken om het groot te maken.</p>
+      <div class="groups" id="groups"></div>
+    </section>
+
+    <section class="block">
+      <h2>Waarom het hier zo mooi is</h2>
+      <dl class="why">
+        <div class="b"><dt>Water</dt><dd>Ongeveer een kwart van Nederland ligt onder zeeniveau. De Afsluitdijk maakte in 1932 met 32 kilometer dijk van de Zuiderzee een meer, en de Deltawerken sloten daarna de zeearmen in het zuidwesten af.</dd></div>
+        <div class="y"><dt>Licht</dt><dd>Water en wolken geven het licht hier zijn zachte glans. Schilders uit de Gouden Eeuw als Jacob van Ruisdael zetten de horizon laag en gaven de lucht het grootste deel van het doek.</dd></div>
+        <div class="r"><dt>Polders</dt><dd>Veel van het landschap is met de hand getekend: rechte sloten, lange wegen en kavels als vlakken op een doek. Piet Mondriaan begon als schilder van dit land, en in 1917 begon in Leiden het tijdschrift De Stijl.</dd></div>
+        <div class="b"><dt>Wadden</dt><dd>Twee keer per dag loopt de Waddenzee leeg en weer vol. Het gebied staat sinds 2009 op de UNESCO-werelderfgoedlijst en is een rustplaats voor miljoenen trekvogels.</dd></div>
+        <div class="y"><dt>Steden</dt><dd>De Amsterdamse grachtengordel komt uit de zeventiende eeuw en is sinds 2010 werelderfgoed. Rotterdam, in 1940 verwoest, bouwde juist iets nieuws, met de Erasmusbrug als bekendste beeld.</dd></div>
+        <div class="r"><dt>Bos en hei</dt><dd>Op De Hoge Veluwe loop je over 5.400 hectare bos, heide en stuifzand. Herten en wilde zwijnen komen er langs de wildcam, en met wat geluk zie je ze hierboven live.</dd></div>
+      </dl>
+    </section>
+
+    <section class="block">
+      <h2>Mooi, maar zonder livebeeld</h2>
+      <p class="sub">Voor deze plekken vonden we geen YouTube-stream die nu live is. Ze horen er wel bij.</p>
+      <ul class="nocam">
+        <li><b>Giethoorn, Overijssel</b><span>Een dorp met grachten en bruggetjes, waar je in het oude deel over het water gaat.</span></li>
+        <li><b>Kinderdijk, Zuid-Holland</b><span>Negentien molens uit de achttiende eeuw, sinds 1997 werelderfgoed.</span></li>
+        <li><b>Vaalserberg, Limburg</b><span>Ruim 322 meter hoog, het hoogste punt van Nederland, op de grens met België en Duitsland.</span></li>
+        <li><b>Rietveld Schröderhuis, Utrecht</b><span>De Stijl om in te wonen, uit 1924 en sinds 2000 werelderfgoed.</span></li>
+        <li><b>Lauwersmeer, Groningen en Friesland</b><span>Een voormalige zeearm met een van de donkerste nachthemels van het land.</span></li>
+        <li><b>Hunebedden, Drenthe</b><span>Grafkamers van zwerfstenen, meer dan vijfduizend jaar oud.</span></li>
+        <li><b>Loonse en Drunense Duinen, Noord-Brabant</b><span>Een stuifzandgebied dat aanvoelt als een kleine woestijn.</span></li>
+        <li><b>Oostvaardersplassen, Flevoland</b><span>Moeras op de bodem van de voormalige Zuiderzee, vol vogels.</span></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>Beelden via YouTube, van de kanalen WebCam NL, Now4Rent, WebcamEgmond, Live webcams Zandvoort, TexelInformatie, WebCam MaritiemStream, Rotterdam Make It Happen, RTM XL, Port of Rotterdam, Strandweer.nu, hogeveluwe en tvbuitengewoon. Alle 22 streams waren live op 5 november 2026.</p>
+    <p>Valt een stream uit, dan slaat deze pagina hem over en probeert hem later opnieuw.</p>
+  </footer>
+</div>
+
+<script>
+const GROUPS = ['Steden', 'Kust', 'Wadden', 'Rivier en bos'];
+const CAMS = [
+  { id: 'Gd9d4q6WvUY', group: 'Steden', name: 'De Dam', where: 'Amsterdam, Noord-Holland', note: 'Het plein voor het Koninklijk Paleis.', src: 'Now4Rent' },
+  { id: '43qH0tDA6lM', group: 'Steden', name: 'Beurs van Berlage', where: 'Amsterdam, Noord-Holland', note: 'Damrak en Beursplein, midden in de stad.', src: 'WebCam NL' },
+  { id: '3gTHiUWrCAE', group: 'Steden', name: 'Sixhaven', where: 'Amsterdam, Noord-Holland', note: 'Een haventje aan het IJ, tegenover het Centraal Station.', src: 'WebCam NL' },
+  { id: 'nFozEhYTEMo', group: 'Steden', name: 'Erasmusbrug', where: 'Rotterdam, Zuid-Holland', note: 'De brug, de Kop van Zuid en de cruiseterminal.', src: 'Rotterdam Make It Happen' },
+  { id: 'AW9qfqH-uOQ', group: 'Steden', name: 'Skyline Rotterdam', where: 'Rotterdam, Zuid-Holland', note: 'Hoogbouw boven de Rijnhaven.', src: 'RTM XL' },
+  { id: 'o9MIV7sep5k', group: 'Steden', name: 'Zaanse Schans', where: 'Zaandam, Noord-Holland', note: 'Molens en groene houten huizen aan de Zaan.', src: 'WebCam NL' },
+
+  { id: '8nn9fAr9LCE', group: 'Kust', name: 'Strand van Scheveningen', where: 'Den Haag, Zuid-Holland', note: 'Noordzee, strandtenten en de lange boulevard.', src: 'WebCam NL' },
+  { id: 'rs27UQIsaMU', group: 'Kust', name: 'Zandvoort', where: 'Noord-Holland', note: 'Op zijn mooist bij zonsondergang boven zee.', src: 'Live webcams Zandvoort' },
+  { id: 'UmTxEhpcqd4', group: 'Kust', name: 'Vuurtoren van Speijk', where: 'Egmond aan Zee, Noord-Holland', note: 'De witte vuurtoren uit 1834, met zee en strand.', src: 'WebcamEgmond' },
+  { id: 'mI1Os7TFdGc', group: 'Kust', name: 'Boulevard Egmond', where: 'Egmond aan Zee, Noord-Holland', note: 'Boulevard en strand, van bovenaf.', src: 'Strandweer.nu' },
+  { id: 'YGuNCdksqc4', group: 'Kust', name: 'Oostvoorne', where: 'Voorne, Zuid-Holland', note: 'Een rustig stuk kust met duinen.', src: 'WebCam NL' },
+  { id: 'jDF264Bg1_c', group: 'Kust', name: 'Boulevard Hoek van Holland', where: 'Rotterdam, Zuid-Holland', note: 'Waar de stad aan de Noordzee ligt.', src: 'Strandweer.nu' },
+  { id: '_KVWehizoNU', group: 'Kust', name: 'Nieuwe Waterweg', where: 'Rotterdam, Zuid-Holland', note: 'De vaarroute van de Noordzee naar de haven.', src: 'Port of Rotterdam' },
+  { id: 'tRIvZ7_4Kb8', group: 'Kust', name: 'Vlissingen', where: 'Zeeland', note: 'De stad aan de monding van de Westerschelde.', src: 'WebCam MaritiemStream' },
+
+  { id: 'YIefLlsHUVQ', group: 'Wadden', name: 'Texel, paal 9', where: 'Texel, Noord-Holland', note: 'Strand en golven, geliefd bij surfers.', src: 'TexelInformatie' },
+  { id: '34tOlrk7z4M', group: 'Wadden', name: 'Vlieland', where: 'Vlieland, Friesland', note: 'Uitzicht vanaf het Badhuys.', src: 'WebCam NL' },
+  { id: 'veFwViz4_OI', group: 'Wadden', name: 'Vlieland, De Veerman', where: 'Vlieland, Friesland', note: 'Een draaibare camera op het eiland.', src: 'WebCam NL' },
+  { id: 'UZzDO7gQuNk', group: 'Wadden', name: 'Ameland', where: 'Ameland, Friesland', note: 'Waddeneiland met duinen en een rood-witte vuurtoren.', src: 'WebCam NL' },
+
+  { id: 'RsdiBvgeGpg', group: 'Rivier en bos', name: 'De Hoge Veluwe', where: 'Gelderland', note: 'De wildcam van het nationale park.', src: 'hogeveluwe' },
+  { id: '2U4E2h62CQo', group: 'Rivier en bos', name: 'Ooievaars in Herwijnen', where: 'Gelderland', note: 'Livebeeld van de ooievaarsopvang.', src: 'tvbuitengewoon' },
+  { id: 'fBvBzM1dfuY', group: 'Rivier en bos', name: 'Fort Pannerden', where: 'Doornenburg, Gelderland', note: 'Een fort uit de negentiende eeuw, bij de splitsing van de Rijn.', src: 'WebCam NL' },
+  { id: 'qhFgy074QOM', group: 'Rivier en bos', name: 'Waalstrand', where: 'Gendt, Gelderland', note: 'Een camping aan de Waal.', src: 'WebCam NL' },
+];
+CAMS.forEach((c) => { c.offlineUntil = 0; });
+const OPENERS = ['o9MIV7sep5k', 'Gd9d4q6WvUY', 'nFozEhYTEMo', '8nn9fAr9LCE'];
+
+const SWAP_MIN = 18000, SWAP_MAX = 40000;   // wisseltijd in ms
+const LOAD_TIMEOUT = 12000;                 // per poging; na twee pogingen telt een stream als offline
+const OFFLINE_RETRY = 10 * 60 * 1000;       // offline streams later opnieuw proberen
+
+const $ = (id) => document.getElementById(id);
+const wall = $('wall');
+const narrow = window.matchMedia('(max-width: 760px)');
+const tiles = [];
+let paused = false, dueAt = 0, delay = 0, lastTile = -1;
+
+const usable = () => CAMS.filter((c) => c.offlineUntil < Date.now());
+const shown = () => tiles.flatMap((t) => [t.cam, t.pending]).filter(Boolean);
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+function buildTile(i) {
+  const el = document.createElement('div');
+  el.className = 'tile v' + i;
+  el.innerHTML = '<div class="waiting">Verbinden met Nederland</div>' +
+    '<div class="live" hidden>LIVE</div>' +
+    '<div class="tag" hidden><span class="where"></span><span class="name"></span>' +
+    '<a target="_blank" rel="noopener noreferrer">Op YouTube bekijken ↗</a></div>';
+  const t = { i, el, cam: null, pending: null, layer: null, player: null, token: 0 };
+  el.addEventListener('click', (e) => {
+    if (i === 0 || e.target.closest('a') || !t.cam) return;
+    swapWithMain(t);
+  });
+  wall.appendChild(el);
+  tiles.push(t);
+  new ResizeObserver(() => sizePlayers(t)).observe(el);
+}
+
+// Renderbreedte per scherm in pixels: het grote scherm 1080p, de kleine 480p. Vijf streams tegelijk zijn zo goed te doen.
+function sizePlayers(t) {
+  const rw = t.i === 0 ? (narrow.matches ? 1280 : 1920) : (narrow.matches ? 640 : 854);
+  const rh = rw * 9 / 16;
+  const box = t.el.getBoundingClientRect();
+  if (!box.width) return;
+  t.el.style.setProperty('--rw', rw + 'px');
+  t.el.style.setProperty('--rh', rh + 'px');
+  t.el.style.setProperty('--s', Math.max(box.width / rw, box.height / rh));
+}
+
+function label(t, cam) {
+  t.el.querySelector('.waiting').hidden = true;
+  t.el.querySelector('.live').hidden = false;
+  t.el.querySelector('.tag').hidden = false;
+  t.el.querySelector('.where').textContent = cam.where;
+  t.el.querySelector('.name').textContent = cam.name;
+  const a = t.el.querySelector('a');
+  a.href = 'https://www.youtube.com/watch?v=' + cam.id;
+  a.setAttribute('aria-label', cam.name + ' op YouTube bekijken');
+  t.el.title = t.i === 0 ? '' : 'Zet ' + cam.name + ' op het grote scherm';
+}
+
+// De nieuwe stream laadt onzichtbaar onder de oude en komt pas in beeld als hij echt speelt.
+// Blijft een stream hangen, dan krijgt hij één nieuwe poging. `after` loopt zodra hij speelt.
+function load(t, cam, after, attempt = 0) {
+  const token = ++t.token;
+  if (t.pendingLayer) discard(t.pendingPlayer, t.pendingLayer);
+  t.pending = cam;
+  renderList();
+
+  const layer = document.createElement('div');
+  layer.className = 'layer';
+  const slot = document.createElement('div');
+  layer.appendChild(slot);
+  t.el.insertBefore(layer, t.el.querySelector('.live'));
+
+  const fail = () => {
+    if (token !== t.token) return;
+    clearTimeout(timer);
+    discard(player, layer);
+    t.pending = t.pendingLayer = t.pendingPlayer = null;
+    // Speelt deze stream nog op een ander scherm, dan is hij niet offline en blijft alles zoals het was.
+    if (tiles.some((o) => o !== t && o.cam === cam)) { renderList(); return; }
+    cam.offlineUntil = Date.now() + OFFLINE_RETRY;
+    const alt = usable().filter((c) => !shown().includes(c));
+    if (alt.length) load(t, pick(alt)); else renderList();
+  };
+  const timer = setTimeout(() => {
+    if (token !== t.token || document.hidden) return;   // verborgen tabbladen spelen vaak niet af
+    if (attempt < 1) load(t, cam, after, attempt + 1); else fail();
+  }, LOAD_TIMEOUT);
+
+  const player = new YT.Player(slot, {
+    host: 'https://www.youtube-nocookie.com',
+    videoId: cam.id,
+    playerVars: { autoplay: 1, mute: 1, controls: 0, playsinline: 1, rel: 0, iv_load_policy: 3, disablekb: 1, fs: 0, origin: location.origin },
+    events: {
+      onReady: (e) => { e.target.mute(); e.target.playVideo(); },
+      onError: fail,
+      onStateChange: (e) => {
+        if (token !== t.token) return;
+        if (e.data === YT.PlayerState.PLAYING && t.pending === cam) {
+          clearTimeout(timer);
+          commit(t, cam, layer, player);
+          if (after) after();
+        } else if (e.data === YT.PlayerState.ENDED && t.cam === cam) {
+          cam.offlineUntil = Date.now() + OFFLINE_RETRY;
+          replace(t);
+        }
+      },
+    },
+  });
+  t.pendingLayer = layer;
+  t.pendingPlayer = player;
+}
+
+function commit(t, cam, layer, player) {
+  const oldLayer = t.layer, oldPlayer = t.player;
+  t.cam = cam; t.layer = layer; t.player = player;
+  t.pending = t.pendingLayer = t.pendingPlayer = null;
+  layer.classList.add('on');
+  label(t, cam);
+  renderList();
+  if (oldLayer) setTimeout(() => discard(oldPlayer, oldLayer), 1300);
+}
+
+function discard(player, layer) {
+  try { player && player.destroy(); } catch (e) { /* speler was al weg */ }
+  layer && layer.remove();
+}
+
+function replace(t) {
+  const alt = usable().filter((c) => !shown().includes(c));
+  if (alt.length) load(t, pick(alt));
+}
+
+function swapWithMain(t) {
+  const main = tiles[0];
+  const a = main.cam, b = t.cam;
+  if (!a || !b) return;
+  load(main, b, () => load(t, a));
+  schedule();
+}
+
+function shuffleOnce() {
+  const alt = usable().filter((c) => !shown().includes(c));
+  if (!alt.length) { schedule(); return; }
+  const free = tiles.filter((t) => t.i !== lastTile && !t.pending);
+  const t = pick(free.length ? free : tiles);
+  lastTile = t.i;
+  load(t, pick(alt));
+  schedule();
+}
+
+function schedule() {
+  delay = SWAP_MIN + Math.random() * (SWAP_MAX - SWAP_MIN);
+  dueAt = Date.now() + delay;
+}
+
+function tick() {
+  const now = Date.now();
+  if (paused) {
+    dueAt += 250;
+  } else if (!document.hidden && dueAt && now >= dueAt) {
+    shuffleOnce();
+  }
+  $('nextlabel').textContent = paused ? 'Wisselen' : 'Wissel over';
+  $('status').textContent = paused ? 'gepauzeerd' : Math.ceil(Math.max(0, dueAt - now) / 1000) + ' s';
+}
+
+function renderList() {
+  const box = $('groups');
+  if (!box.children.length) {
+    GROUPS.forEach((g) => {
+      const div = document.createElement('div');
+      div.className = 'group';
+      const h = document.createElement('h3');
+      h.textContent = g;
+      const ul = document.createElement('ul');
+      div.append(h, ul);
+      CAMS.filter((c) => c.group === g).forEach((c) => {
+        const li = document.createElement('li');
+        li.innerHTML = '<button type="button"><span class="cname"></span><span class="cstate"></span><span class="cnote"></span></button>';
+        li.querySelector('.cname').textContent = c.name;
+        li.querySelector('.cnote').textContent = c.where + '. ' + c.note;
+        li.querySelector('button').addEventListener('click', () => choose(c));
+        c.row = li;
+        ul.appendChild(li);
+      });
+      box.appendChild(div);
+    });
+  }
+  CAMS.forEach((c) => {
+    const s = c.row.querySelector('.cstate');
+    const on = tiles.some((t) => t.cam === c);
+    const off = c.offlineUntil > Date.now();
+    s.className = 'cstate' + (on ? ' in' : off ? ' off' : '');
+    s.textContent = on ? 'in beeld' : off ? 'offline' : '';
+  });
+}
+
+function choose(cam) {
+  const holder = tiles.find((t) => t.cam === cam);
+  if (holder && holder.i === 0) return;
+  cam.offlineUntil = 0;
+  if (holder) swapWithMain(holder); else { load(tiles[0], cam); schedule(); }
+  wall.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+}
+
+function clock() {
+  const now = new Date();
+  $('date').textContent = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'long', day: 'numeric', month: 'long' }).format(now);
+  $('clock').textContent = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now);
+}
+
+// Telefoon: drie schermen. Breder: vijf. Past zich aan als het venster verandert.
+function fitTiles() {
+  const wanted = narrow.matches ? 3 : 5;
+  while (tiles.length > wanted) {
+    const t = tiles.pop();
+    t.token++;
+    discard(t.pendingPlayer, t.pendingLayer);
+    discard(t.player, t.layer);
+    t.el.remove();
+  }
+  while (tiles.length < wanted) {
+    buildTile(tiles.length);
+    replace(tiles[tiles.length - 1]);
+  }
+  renderList();
+}
+
+function start() {
+  buildTile(0);
+  renderList();
+  // Begin met een bekend beeld op het grote scherm, de rest willekeurig.
+  const opener = pick(OPENERS);
+  load(tiles[0], CAMS.find((c) => c.id === opener));
+  fitTiles();
+  narrow.addEventListener('change', fitTiles);
+  schedule();
+  setInterval(tick, 250);
+}
+
+$('next').addEventListener('click', shuffleOnce);
+$('pause').addEventListener('click', (e) => {
+  paused = !paused;
+  e.currentTarget.setAttribute('aria-pressed', String(paused));
+  e.currentTarget.textContent = paused ? 'Verder' : 'Pauze';
+});
+clock();
+setInterval(clock, 1000);
+
+window.onYouTubeIframeAPIReady = start;
+const api = document.createElement('script');
+api.src = 'https://www.youtube.com/iframe_api';
+api.onerror = () => { $('status').textContent = 'YouTube is niet bereikbaar'; };
+document.head.appendChild(api);
+</script>
+</body>
+</html>
