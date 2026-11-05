@@ -504,7 +504,7 @@ function tick() {
     shuffleOnce();
   }
   $('nextlabel').textContent = paused ? 'Wisselen' : 'Wissel over';
-  $('status').textContent = paused ? 'gepauzeerd' : Math.ceil(Math.max(0, dueAt - now) / 1000) + ' s';
+  $('status').textContent = paused ? 'uit' : Math.ceil(Math.max(0, dueAt - now) / 1000) + ' s';
 }
 
 function renderList() {
